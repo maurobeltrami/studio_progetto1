@@ -11,7 +11,7 @@ intestazione = ["Nome Prodotto", "Prezzo Base", "IVA Calcolata", "Prezzo Finale"
 dati_csv.append(intestazione)
 
 # Esempio 1: Laptop
-pb_laptop, iva_laptop, pf_laptop, ali_laptop = calcola_iva(1200.00)
+pb_laptop, iva_laptop, pf_laptop, ali_laptop = calcola_iva(1500.00)
 dati_csv.append(["Laptop", pb_laptop, iva_laptop, pf_laptop, ali_laptop])
 
 # Esempio 2: Smartphone
