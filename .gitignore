@@ -1,0 +1,4 @@
+# Ignora l'ambiente virtuale
+/esercizi
+# Ignora i file di report generati
+/report_iva.csv
