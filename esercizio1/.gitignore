@@ -2,8 +2,5 @@
 /esercizi
 # Ignora i file di report generati
 /report_iva.csv
-<<<<<<< HEAD
-=======
 # Ignora i file di sistema Mac
 .DS_Store
->>>>>>> 3feecbc36fa5f88ca4a7c2602e27621ea620ff56
