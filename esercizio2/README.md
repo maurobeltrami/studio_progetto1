@@ -14,10 +14,13 @@ Implementare una Classe `Prodotto` e i suoi metodi per simulare le quattro opera
 
 La Classe `Prodotto` è stata rafforzata per garantire l'integrità dei dati, un requisito fondamentale per i sistemi ERP.
 
-* **Validazione in `__init__`:** Il costruttore ora chiama un metodo `_valida_dati()` che solleva un'eccezione **`ValueError`** se:
+**Validazione in fase di Creazione (`__init__`):** Il costruttore solleva un'eccezione **`ValueError`** se:
     1.  Il `codice` o il `nome` del prodotto sono vuoti.
     2.  Il `prezzo_netto` o l'`aliquota_iva` sono valori negativi.
-* **Gestione Esterna:** Il blocco `try...except ValueError` è utilizzato nel codice di test per catturare gli errori di validazione e permettere al programma di continuare a funzionare senza bloccarsi.
+
+* **Validazione in fase di Aggiornamento (`aggiorna_prezzo`):** Il metodo di aggiornamento del prezzo ora verifica che il `nuovo_prezzo_netto` non sia negativo prima di salvare la modifica. Un tentativo di aggiornamento non valido viene catturato tramite il blocco `try...except`.
+
+Questa logica previene l'introduzione di dati non validi nel sistema, mantenendo l'integrità del prodotto.
 
 ### 📁 Struttura del Codice
 

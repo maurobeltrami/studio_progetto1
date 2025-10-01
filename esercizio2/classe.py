@@ -40,6 +40,8 @@ class Prodotto:
 	
 	def aggiorna_prezzo(self, nuovo_prezzo_netto):
 		"""Aggiorna il prezzo netto e ricalcola immediatamente il prezzo lordo."""
+		if nuovo_prezzo_netto < 0:
+			raise ValueError(f"il nuovo prezzo netto (€{nuovo_prezzo_netto:.2f}) non può essere negativo")
 		#1. Aggiorna l'attributo principale
 		self.prezzo_netto = nuovo_prezzo_netto
 		#2. Ricalcola l'attributo dipendente
@@ -101,6 +103,21 @@ print("Eliminazione dell'oggetto 'tastiera' con del...")
 del tastiera
 print("Oggetto 'tastiera' non più accessibile.")
 
+#prove di validazione update
+print("\n---Test: Exception handling (Aggiornamento Dati)---")
+print(f"Prezzo iniziale del Laptop: €{laptop.prezzo_netto:.2f}")
 
+#Test update positivo (Aggiornamento valido)
+try:
+	laptop.aggiorna_prezzo(nuovo_prezzo_netto=750.00)
+	print(f"Aggiornamento Riuscito. Nuovo prezzo: €{laptop.prezzo_netto:.2f}")
+except ValueError as e:
+	print(f"Errore inaspettatodurante aggiornamento valido: {e}")
 
-
+#Test update negativo (Aggiornamento non  valido)
+try:
+        laptop.aggiorna_prezzo(nuovo_prezzo_netto=-750.00)
+	#Se arriva qui, la validazione è fallita
+        print("Errore! La validazione del prezzo negativo ha fallito")
+except ValueError as e:
+        print(f"Eccezione catturata (Update Negativo): {e}")
