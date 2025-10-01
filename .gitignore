@@ -1,9 +1,19 @@
-# Ignora l'ambiente virtuale
+# .gitignore pulito per Progetti Python
+
+# Ambienti Virtuali (CRUCIALE: NON VANNO MAI COMMITTATI)
+# Questo esclude la cartella di attivazione 'esercizi' che usi come venv
 /esercizi
-# Ignora i file di report generati
-/report_iva.csv
-<<<<<<< HEAD
-=======
-# Ignora i file di sistema Mac
+.venv/
+venv/
+env/
+
+# Bytecode e file di sistema generati da Python
+__pycache__/
+*.pyc
+
+# File generati dall'OS (macOS)
 .DS_Store
->>>>>>> 3feecbc36fa5f88ca4a7c2602e27621ea620ff56
+
+# Report e Log (File che cambiano spesso)
+/report_iva.csv
+*.log
