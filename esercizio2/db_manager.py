@@ -94,37 +94,221 @@ class ProdottoDBManager:
             print(f"❌ Errore generico: {e}")
             return None
 
+    def leggi_prodotti(self):
+        """
+        Recupera tutti i prodotti attivi dal database e li restituisce come lista di oggetti Prodotto.
+        
+        Returns:
+            list[Prodotto]: Una lista di istanze di oggetti Prodotto.
+        """
+        if not self.conn:
+            print("❌ Connessione non attiva. Impossibile leggere i dati.")
+            return []
+            
+        # 1. Query SQL per selezionare tutti i campi dalla tabella prodotti
+        query = "SELECT codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo FROM prodotti WHERE attivo = TRUE;"
+        
+        prodotti_letti = []
+        
+        try:
+            # Esecuzione della Query
+            self.cursor.execute(query)
+            
+            # 2. Recupero di tutti i risultati
+            risultati = self.cursor.fetchall()
+            
+            # 3. Iterazione e Ricostruzione degli Oggetti
+            for riga in risultati:
+                # La riga è una tupla: (codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo)
+                codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo = riga
+                
+                # Ricostruiamo l'oggetto Prodotto usando il costruttore della classe
+                # Nota: Passiamo solo i dati che il costruttore ha bisogno per l'inizializzazione
+                prodotto_ricostruito = Prodotto(
+                    codice=codice,
+                    nome=nome,
+                    prezzo_netto=float(prezzo_netto),  # Converte Decimal da DB a float Python
+                    aliquota_iva=float(aliquota_iva),
+                    # Il prezzo_lordo e attivo non vengono passati al costruttore, ma si calcolano/settano dopo
+                )
+                # Il database gestisce la verità. Potresti voler sovrascrivere il calcolo del Lordo (o no)
+                # In questo caso, lo lasciamo calcolare dalla classe, a meno che non sia necessario importare il valore esatto.
+                # Per ora, la ricostruzione è sufficiente.
+                
+                prodotti_letti.append(prodotto_ricostruito)
+
+            print(f"✅ Lettura completata. Trovati {len(prodotti_letti)} prodotti attivi.")
+            return prodotti_letti
+
+        except psycopg2.Error as e:
+            print(f"❌ Errore DB durante la lettura dei prodotti: {e}")
+            return []
+        except Exception as e:
+            print(f"❌ Errore generico durante la ricostruzione dei prodotti: {e}")
+            return []
+
+
+    def aggiorna_prodotto(self, prodotto):
+        """
+        Aggiorna i dati di un prodotto esistente nel database, identificandolo tramite il codice.
+        
+        Args:
+            prodotto (Prodotto): L'istanza di Prodotto con i dati aggiornati.
+            
+        Returns:
+            bool: True se l'aggiornamento è riuscito, False altrimenti.
+        """
+        if not self.conn:
+            print("❌ Connessione non attiva. Impossibile aggiornare i dati.")
+            return False
+
+        # 1. Query SQL per l'aggiornamento
+        # Vogliamo aggiornare tutti i campi che potrebbero essere cambiati, basandoci sul CODICE
+        query = """
+        UPDATE prodotti
+        SET 
+            nome = %s,
+            prezzo_netto = %s,
+            aliquota_iva = %s,
+            prezzo_lordo = %s
+        WHERE codice = %s;
+        """
+        
+        # 2. Tupla dei Valori: l'ordine è cruciale!
+        # NOTA: il codice va messo alla fine perché è il parametro della clausola WHERE
+        valori = (
+            prodotto.nome,
+            prodotto.prezzo_netto,
+            prodotto.aliquota_iva,
+            prodotto.prezzo_lordo,
+            prodotto.codice  # <--- Questo è il filtro WHERE
+        )
+        
+        try:
+            # Esecuzione della Query
+            self.cursor.execute(query, valori)
+            
+            # Controlla quanti record sono stati modificati (dovrebbe essere 1)
+            righe_aggiornate = self.cursor.rowcount
+            
+            if righe_aggiornate > 0:
+                # 3. Conferma la Transazione
+                self.conn.commit()
+                print(f"✅ Aggiornamento completato per il prodotto '{prodotto.codice}'.")
+                return True
+            else:
+                # Se rowcount è 0, il prodotto con quel codice non esiste
+                print(f"⚠️ Errore: Prodotto con codice '{prodotto.codice}' non trovato. Nessun aggiornamento.")
+                self.conn.rollback() # Annulla eventuali azioni intermedie
+                return False
+            
+        except psycopg2.Error as e:
+            # 4. Annulla la Transazione in caso di errore (es. dati non validi nel DB)
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ Errore DB durante l'aggiornamento: {e}")
+            return False
+        
+        except Exception as e:
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ Errore generico: {e}")
+            return False
+
+
+# ... (all'interno della classe ProdottoDBManager, dopo aggiorna_prodotto)
+
+    def elimina_prodotto(self, codice):
+        """
+        Elimina un prodotto dal database, identificandolo tramite il codice.
+        
+        Args:
+            codice (str): Il codice del prodotto da eliminare.
+            
+        Returns:
+            bool: True se l'eliminazione è riuscita, False altrimenti.
+        """
+        if not self.conn:
+            print("❌ Connessione non attiva. Impossibile eliminare i dati.")
+            return False
+
+        # 1. Query SQL per l'eliminazione
+        # NOTA: Usiamo il codice per identificare il record (il vincolo WHERE)
+        query = "DELETE FROM prodotti WHERE codice = %s;"
+        
+        try:
+            # Esecuzione della Query con il codice come parametro
+            self.cursor.execute(query, (codice,))
+            
+            # Controlla quanti record sono stati eliminati (dovrebbe essere 1)
+            righe_eliminate = self.cursor.rowcount
+            
+            if righe_eliminate > 0:
+                # 2. Conferma la Transazione
+                self.conn.commit()
+                print(f"✅ Prodotto con codice '{codice}' eliminato con successo dal DB.")
+                return True
+            else:
+                # Se rowcount è 0, il prodotto con quel codice non esisteva
+                print(f"⚠️ Errore: Prodotto con codice '{codice}' non trovato. Nessuna eliminazione.")
+                self.conn.rollback() 
+                return False
+            
+        except psycopg2.Error as e:
+            # 3. Annulla la Transazione in caso di errore
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ Errore DB durante l'eliminazione: {e}")
+            return False
+        
+        except Exception as e:
+            if self.conn:
+                self.conn.rollback()
+            print(f"❌ Errore generico: {e}")
+            return False
+
+# ... (dopo la definizione della classe ProdottoDBManager)
+
 # -----------------------------------------------
-# --- TEST DI CONNESSIONE E INSERIMENTO (CREATE) ---
+# --- TEST DI CONNESSIONE, UPDATE E DELETE ---
 # -----------------------------------------------
 if __name__ == '__main__':
     
-    # 1. Crea oggetti Prodotto validati in memoria
-    try:
-        laptop = Prodotto(codice="LPT-001", nome="Laptop Aziendale X1", prezzo_netto=850.00, aliquota_iva=22.0)
-        tastiera = Prodotto(codice="ACS-012", nome="Tastiera Meccanica PRO", prezzo_netto=45.00, aliquota_iva=22.0)
-        
-    except ValueError as e:
-        print(f"Errore di validazione Prodotto: {e}. Correggi la classe.py")
-        exit()
-        
     manager = ProdottoDBManager()
     print("\n--- Tentativo di connessione avviato ---")
     
     if manager.connetti():
         
-        # TEST 1: Inserimento di un Prodotto Valido (Laptop)
-        # Se LPT-001 è già presente, questo fallirà.
-        print("\n--- TEST: Inserimento 1 ---")
-        manager.inserisci_prodotto(laptop)
+        CODICE_LAPTOP = "LPT-001"
+        CODICE_TASTIERA = "ACS-012"
         
-        # TEST 2: Inserimento di un altro Prodotto Valido (Tastiera)
-        print("\n--- TEST: Inserimento 2 ---")
-        manager.inserisci_prodotto(tastiera)
+        # --- FASE 1: Lettura Iniziale ---
+        print("\n--- FASE 1: Lettura Iniziale ---")
+        prodotti_iniziali = manager.leggi_prodotti() 
+        print(f"Prodotti trovati prima del DELETE: {len(prodotti_iniziali)}")
         
-        print("\n--- TEST: Inserimento Duplicato ---")
-        # TEST 3: Inserimento di un Prodotto DUPLICATO (dovrebbe fallire e attivare il ROLLBACK)
-        laptop_duplicato = Prodotto(codice="LPT-001", nome="Laptop Duplicato", prezzo_netto=1.00, aliquota_iva=22.0)
-        manager.inserisci_prodotto(laptop_duplicato) 
+        # --- FASE 2: Aggiornamento (per ripasso) ---
+        print("\n--- FASE 2: Esecuzione UPDATE ---")
+        laptop_da_modificare = next((p for p in prodotti_iniziali if p.codice == CODICE_LAPTOP), None)
+        if laptop_da_modificare:
+            laptop_da_modificare.aggiorna_prezzo_netto(725.50)
+            manager.aggiorna_prodotto(laptop_da_modificare)
+
+        # --- FASE 3: Eliminazione (DELETE) ---
+        print(f"\n--- FASE 3: Esecuzione DELETE per {CODICE_TASTIERA} ---")
+        manager.elimina_prodotto(CODICE_TASTIERA)
         
+        # --- FASE 4: Lettura Finale per Verifica ---
+        print("\n--- FASE 4: Verifica Finale dopo DELETE ---")
+        prodotti_finali = manager.leggi_prodotti()
+        print(f"✅ Prodotti rimasti nel DB: {len(prodotti_finali)}")
+        
+        # Stampa i prodotti rimasti per conferma (dovrebbe esserci solo LPT-001)
+        for p in prodotti_finali:
+            print(f"   - RIMASTO: {p.codice}: {p.nome} (Netto: €{p.prezzo_netto:.2f})")
+            
+        # Test di eliminazione di un prodotto inesistente (dovrebbe fallire con un avviso)
+        print("\n--- TEST: Eliminazione di codice inesistente ---")
+        manager.elimina_prodotto("PROD-INESISTENTE")
+            
     manager.disconnetti()

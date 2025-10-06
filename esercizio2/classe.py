@@ -1,123 +1,115 @@
+import uuid
+from decimal import Decimal, ROUND_HALF_UP
+
 class Prodotto:
-	def __init__(self, codice,nome, prezzo_netto, aliquota_iva=0.22):
-		
-		#1.chiamata alla validazione
-		self._valida_dati(codice, nome, prezzo_netto, aliquota_iva)
-	
-		#se la validazione non ha sollevato eccezioni, salva i dati
-		self.codice = codice
-		self.nome = nome
-		self.prezzo_netto = prezzo_netto
-		self.aliquota_iva = aliquota_iva
-		
-		self.prezzo_lordo = self.calcola_prezzo_lordo()
+    """
+    Gestisce il modello di dati di un Prodotto, inclusa la validazione,
+    il calcolo del prezzo Lordo e la gestione dell'identificativo.
+    """
+    def __init__(self, codice, nome, prezzo_netto, aliquota_iva=22.0):
+        # Genera un ID univoco in memoria (utile finché non usiamo l'ID del DB)
+        self._uuid = str(uuid.uuid4())
+        
+        # Inizializza gli attributi privati
+        self._codice = None
+        self._nome = None
+        self._prezzo_netto = None
+        self._aliquota_iva = None
+        self._prezzo_lordo = None
+        
+        # Assegna i valori tramite i setter (che includono la validazione)
+        self.codice = codice
+        self.nome = nome
+        self.aliquota_iva = aliquota_iva
+        self.prezzo_netto = prezzo_netto # Questo setter calcolerà anche il Lordo
+        
+    # --- Metodo di Calcolo Interno (Il Fix del Lordo) ---
+    def _calcola_prezzo_lordo(self):
+        """Calcola e imposta il prezzo Lordo basandosi su Netto e IVA."""
+        if self._prezzo_netto is None or self._aliquota_iva is None:
+            return
 
-	#metodo di validazione separato
-	def _valida_dati(self, codice, nome, prezzo_netto, aliquota_iva):
-		"""Solleva eccezioni integrate se i dati violano le regole ERP."""
-		if not codice or not nome:
-			#solleva un errore generico se un campo è essenziale è vuoto
-			raise ValueError("Il codice e il nome del prodotto non possono essere vuoti.")
-		if prezzo_netto < 0:
-			#solleva un errore specifico per dati numerici non validi
-			raise ValueError(f"Il prezzo netto(€{prezzo_netto:.2f}) non può essere negativo.")
-		if aliquota_iva < 0:
-			#stessa regola per l'IVA
-			raise ValueError(f"L'aliquota IVA (€{aliquota_iva*100:.0f}) non può essere negativa.")
+        # 1. Converte l'aliquota da percentuale (es. 22.0) a fattore (es. 1.22)
+        # 🚨 FIX CRUCIALE: Assicura che l'aliquota sia divisa per 100
+        fattore_moltiplicativo = Decimal(1) + (self._aliquota_iva / Decimal(100))
+        
+        # 2. Calcola e arrotonda il Lordo a 2 decimali
+        lordo = self._prezzo_netto * fattore_moltiplicativo
+        self._prezzo_lordo = lordo.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+    # --- PROPRIETÀ (GETTERS E SETTERS) ---
+    
+    @property
+    def codice(self):
+        return self._codice
+    
+    @codice.setter
+    def codice(self, value):
+        if not value or not value.strip():
+            raise ValueError("Il codice e il nome del prodotto non possono essere vuoti.")
+        self._codice = value.strip()
 
-	def calcola_prezzo_lordo(self):
-		"""Calcola il prezzo lordo (netto + IVA) del prodotto."""
-		return self.prezzo_netto * (1 + self.aliquota_iva)
-	
-	def __str__(self):
-		iva_perc = self.aliquota_iva * 100
-		return (f"\n--- dettagli prodotto ---\n"
-			f"Codice: {self.codice}\n"
-			f"Nome: {self.nome}\n"
-			f"Prezzo Netto: €{self.prezzo_netto:.2f}\n"
-			f"Aliquota IVA: {iva_perc: .0f}%\n"
-			f"Prezzo Lordo: €{self.prezzo_lordo:.2f}")
-	
-	def aggiorna_prezzo(self, nuovo_prezzo_netto):
-		"""Aggiorna il prezzo netto e ricalcola immediatamente il prezzo lordo."""
-		if nuovo_prezzo_netto < 0:
-			raise ValueError(f"il nuovo prezzo netto (€{nuovo_prezzo_netto:.2f}) non può essere negativo")
-		#1. Aggiorna l'attributo principale
-		self.prezzo_netto = nuovo_prezzo_netto
-		#2. Ricalcola l'attributo dipendente
-		self.prezzo_lordo = self.calcola_prezzo_lordo()
-		print(f"\nPrezzo di '{self.nome}' aggiornato a €{self.prezzo_netto:.2f} (Netto).")
+    @property
+    def nome(self):
+        return self._nome
+    
+    @nome.setter
+    def nome(self, value):
+        if not value or not value.strip():
+            raise ValueError("Il codice e il nome del prodotto non possono essere vuoti.")
+        self._nome = value.strip()
 
-#1. CREATE: Creazione delle istanze
+    @property
+    def aliquota_iva(self):
+        # Restituisce il valore come float per coerenza con il DB/input, anche se internamente è Decimal
+        return float(self._aliquota_iva) 
+    
+    @aliquota_iva.setter
+    def aliquota_iva(self, value):
+        # Permette l'input come float o int
+        iva = Decimal(str(value)) 
+        if iva < 0:
+            raise ValueError("L'aliquota IVA non può essere negativa.")
+        self._aliquota_iva = iva
+        # Ricalcola il Lordo se il Netto è già impostato
+        self._calcola_prezzo_lordo() 
 
-try:
-	laptop = Prodotto(codice="LPT-001",nome="Laptop Aziendale X1" ,prezzo_netto=850.00)
-	print(f"Successo: Creato {laptop.nome}")
-except ValueError as e:
-	#questa parte non dovrebbe essere eseguita
-	print(f"Errore inaspettato durante creazione valida: {e}")
+    @property
+    def prezzo_netto(self):
+        # Restituisce il valore come float (o Decimal)
+        return float(self._prezzo_netto) if self._prezzo_netto else 0.0
+    
+    @prezzo_netto.setter
+    def prezzo_netto(self, value):
+        netto = Decimal(str(value)) 
+        if netto < 0:
+            raise ValueError(f"Il prezzo netto (€{netto:.2f}) non può essere negativo.")
+        self._prezzo_netto = netto.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        # 💥 AZIONE CRUCIALE: Ricalcola il Lordo ogni volta che il Netto cambia
+        self._calcola_prezzo_lordo() 
 
-#Test negativo1 (prezzo negativo)
-try:
-	prodotto_negativo = Prodotto(codice="ERR-001", nome="Prodotto Negativo", prezzo_netto=-10.00)
-	# Se il codice arriva qui, la validazione è fallita
-	print("Errore! La validazione del prezzo negativo ha fallito.")
-except ValueError as e:
-	#cattura l'eccezione sollevata da _valida_dati
-	print(f"Eccezione catturata (Prezzo negativo): {e}")
+    @property
+    def prezzo_lordo(self):
+        return float(self._prezzo_lordo) if self._prezzo_lordo else 0.0
 
-#Test negativo2 (Nome vuoto)
-try:
-        prodotto_vuoto = Prodotto(codice="ERR-002", nome="", prezzo_netto=50.00)
-        # Se il codice arriva qui, la validazione è fallita
-        print("Errore! La validazione del nome vuoto ha fallito.")
-except ValueError as e:
-        #cattura l'eccezione sollevata da _valida_dati
-        print(f"Eccezione catturata (Nome vuoto): {e}")
+    # --- Metodi Pubblici ---
 
-tastiera = Prodotto(
-	codice="ACS-012",
-	nome="Tastiera",
-	prezzo_netto=45.00
-)
+    def aggiorna_prezzo_netto(self, nuovo_netto):
+        """Aggiorna il prezzo netto e ricalcola il prezzo lordo."""
+        # Usa il setter per sfruttare la validazione e il ricalcolo automatico del Lordo
+        self.prezzo_netto = nuovo_netto
+        print(f"Prezzo di '{self.nome}' aggiornato a €{self.prezzo_netto:.2f} (Netto).")
 
-licenza_software = Prodotto(
-	codice="SW-LIC-PRO",
-	nome="licenza ERP Pro",
-	prezzo_netto=1200.00,
-	aliquota_iva=0.00
-)
+    # --- Rappresentazione ---
 
-#2. READ: Stampa dei risultati
-print(laptop)
-print(tastiera)
-print(licenza_software)
-
-# UPDATE: modifica del prezzo
-laptop.aggiorna_prezzo(nuovo_prezzo_netto=799.99)
-print(laptop)
-
-#4. DELETE: Eliminazione dell'oggetto 'tastiera'
-print("\n---Operazione DELETE ---")
-print("Eliminazione dell'oggetto 'tastiera' con del...")
-del tastiera
-print("Oggetto 'tastiera' non più accessibile.")
-
-#prove di validazione update
-print("\n---Test: Exception handling (Aggiornamento Dati)---")
-print(f"Prezzo iniziale del Laptop: €{laptop.prezzo_netto:.2f}")
-
-#Test update positivo (Aggiornamento valido)
-try:
-	laptop.aggiorna_prezzo(nuovo_prezzo_netto=750.00)
-	print(f"Aggiornamento Riuscito. Nuovo prezzo: €{laptop.prezzo_netto:.2f}")
-except ValueError as e:
-	print(f"Errore inaspettatodurante aggiornamento valido: {e}")
-
-#Test update negativo (Aggiornamento non  valido)
-try:
-        laptop.aggiorna_prezzo(nuovo_prezzo_netto=-750.00)
-	#Se arriva qui, la validazione è fallita
-        print("Errore! La validazione del prezzo negativo ha fallito")
-except ValueError as e:
-        print(f"Eccezione catturata (Update Negativo): {e}")
+    def __str__(self):
+        """Definisce la rappresentazione a stringa dell'oggetto."""
+        return (
+            "--- dettagli prodotto ---\n"
+            f"Codice: {self.codice}\n"
+            f"Nome: {self.nome}\n"
+            f"Prezzo Netto: €{self.prezzo_netto:.2f}\n"
+            f"Aliquota IVA:  {self.aliquota_iva}%\n"
+            f"Prezzo Lordo: €{self.prezzo_lordo:.2f}"
+        )

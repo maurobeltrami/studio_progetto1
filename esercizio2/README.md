@@ -1,32 +1,47 @@
-## 📦 Esercizio 2: Classe Prodotto e Operazioni CRUD
+🎯 Esercizio 2: Modello di Dominio e Persistenza Dati (CRUD)
 
-Questo esercizio approfondisce i concetti di **Programmazione Orientata agli Oggetti (OOP)**, essenziali per la modellazione dei dati nei sistemi ERP come Odoo.
+Questo modulo si concentra sull'integrazione di un modello di business (la classe Prodotto) con un sistema di persistenza esterno (PostgreSQL), completando tutte le operazioni necessarie per la gestione del ciclo di vita di un dato.
 
-### 🎯 Obiettivo del Progetto
+🛠️ Contenuti e Competenze
 
-Implementare una Classe `Prodotto` e i suoi metodi per simulare le quattro operazioni fondamentali sul ciclo di vita di un dato in memoria:
-* **C**reate (usando `__init__`)
-* **R**ead (usando `__str__`)
-* **U**pdate (usando `aggiorna_prezzo`)
-* **D**elete (usando la funzione `del`)
+1. Modello di Dominio (classe.py)
 
-### 🛡️ Gestione delle Eccezioni (Exception Handling)
+Il file classe.py definisce la logica di business fondamentale del progetto:
 
-La Classe `Prodotto` è stata rafforzata per garantire l'integrità dei dati, un requisito fondamentale per i sistemi ERP.
+    Classe Prodotto: Implementazione completa con incapsulamento (Getter e Setter).
 
-**Validazione in fase di Creazione (`__init__`):** Il costruttore solleva un'eccezione **`ValueError`** se:
-    1.  Il `codice` o il `nome` del prodotto sono vuoti.
-    2.  Il `prezzo_netto` o l'`aliquota_iva` sono valori negativi.
+    Precisione Finanziaria: Uso del modulo decimal per garantire la precisione nei calcoli di prezzo.
 
-* **Validazione in fase di Aggiornamento (`aggiorna_prezzo`):** Il metodo di aggiornamento del prezzo ora verifica che il `nuovo_prezzo_netto` non sia negativo prima di salvare la modifica. Un tentativo di aggiornamento non valido viene catturato tramite il blocco `try...except`.
+    Logica del Lordo: Calcolo automatico e corretto del prezzo Lordo in base all'aliquota IVA.
 
-Questa logica previene l'introduzione di dati non validi nel sistema, mantenendo l'integrità del prodotto.
+    Validazione: Uso dei setter e Exception Handling per prevenire l'inserimento di dati non validi (es. prezzi negativi).
 
-### 📁 Struttura del Codice
+2. Strato di Persistenza (db_manager.py)
 
-Il codice principale si trova nel file: `esercizio_02/classe.py`
+La classe ProdottoDBManager gestisce la comunicazione sicura e transazionale con il database PostgreSQL.
 
-### ⚙️ Dettagli Tecnici
+    Sicurezza: Le credenziali del database sono gestite tramite il file .env e caricate con python-dotenv, evitando l'hardcoding.
 
-* **Librerie:** Nessuna libreria esterna richiesta (solo Python Core).
-* **Concetti chiave:** Attributi di istanza (`self.nome`), metodi (`calcola_prezzo_lordo`), metodi speciali (`__init__`, `__str__`).
+    Connessione Sicura: I metodi connetti() e disconnetti() garantiscono una gestione sicura delle risorse.
+
+    Operazioni CRUD Complete:
+
+        Create (inserisci_prodotto): Utilizza COMMIT e ROLLBACK per transazioni atomiche.
+
+        Read (leggi_prodotti): Esegue SELECT e ricostruisce gli oggetti Prodotto Python.
+
+        Update (aggiorna_prodotto): Modifica i dati del prodotto nel DB in base al codice.
+
+        Delete (elimina_prodotto): Rimuove il record e gestisce il rowcount per la verifica.
+
+⚙️ Istruzioni per l'Esecuzione
+
+Per eseguire i test CRUD presenti nel blocco if __name__ == '__main__': di db_manager.py:
+
+    Assicurati che l'ambiente virtuale sia attivo e che PostgreSQL sia in esecuzione.
+
+    Esegui il modulo dal terminale:
+    Bash
+
+    python -m esercizio2.db_manager
+
