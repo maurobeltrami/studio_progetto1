@@ -1,46 +1,45 @@
 import psycopg2
-
-# Importa la classe Prodotto dal tuo file classe.py
-# (Assicurati che Prodotto sia definito in esercizio2/classe.py)
+# Importazioni per la sicurezza e la gestione dei moduli
+import os
+from dotenv import load_dotenv
 from .classe import Prodotto 
 
+# Carica le variabili d'ambiente dal file .env (deve essere nella cartella radice)
+load_dotenv() 
+
+# Configurazione del database: legge le credenziali da .env
+# Usiamo os.environ.get('VAR', 'DEFAULT') per sicurezza, in caso la variabile non sia impostata
 DB_CONFIG = {
     "host": "localhost",
-    "database": "studio_progetto_erp",
-    "user": "mauroi",        
-    "password": "GiacomoNicola"  
+    "database": os.environ.get("DB_NAME", "studio_progetto_erp"),
+    "user": os.environ.get("DB_USER", "mauroi"),
+    "password": os.environ.get("DB_PASSWORD", "la_tua_password_segreta")
 }
 
 class ProdottoDBManager:
     """
     Gestisce la connessione e le operazioni CRUD per la tabella prodotti.
-    Separa la logica del database dal modello Prodotto.
     """
     def __init__(self):
-        # Inizializza gli oggetti fondamentali per la connessione
         self.conn = None
         self.cursor = None
 
     def connetti(self):
-        """Stabilisce e restituisce una connessione al database, gestendo le eccezioni."""
+        """Stabilisce una connessione al database, gestendo le eccezioni."""
         try:
-            # Crea la connessione e il cursore
             self.conn = psycopg2.connect(**DB_CONFIG)
             self.cursor = self.conn.cursor()
             print("✅ Connessione a PostgreSQL riuscita.")
             return True
         except psycopg2.Error as e:
-            # Cattura errori di autenticazione o server non attivo
             print(f"❌ Errore durante la connessione a PostgreSQL: {e}")
             return False
 
     def disconnetti(self):
         """Chiude la connessione e il cursore in modo sicuro."""
-        # Chiude il cursore se è stato aperto
         if self.cursor:
             self.cursor.close()
             
-        # Chiude la connessione se è stata aperta e non è già chiusa
         if self.conn and not self.conn.closed:
             self.conn.close()
             print("✅ Connessione a PostgreSQL chiusa.")
@@ -51,7 +50,6 @@ class ProdottoDBManager:
         Gestisce la transazione (COMMIT/ROLLBACK).
         """
         
-        # Query SQL sicura con placeholders (%s)
         query = """
         INSERT INTO prodotti (codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo)
         VALUES (%s, %s, %s, %s, %s)
@@ -101,8 +99,7 @@ class ProdottoDBManager:
 # -----------------------------------------------
 if __name__ == '__main__':
     
-    # Crea oggetti Prodotto validati in memoria
-    # Assumendo che la classe Prodotto abbia un costruttore come __init__(codice, nome, prezzo_netto, aliquota_iva=22.0)
+    # 1. Crea oggetti Prodotto validati in memoria
     try:
         laptop = Prodotto(codice="LPT-001", nome="Laptop Aziendale X1", prezzo_netto=850.00, aliquota_iva=22.0)
         tastiera = Prodotto(codice="ACS-012", nome="Tastiera Meccanica PRO", prezzo_netto=45.00, aliquota_iva=22.0)

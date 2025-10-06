@@ -1,19 +1,21 @@
-# .gitignore pulito per Progetti Python
+# .gitignore essenziale per Progetti Python
 
-# Ambienti Virtuali (CRUCIALE: NON VANNO MAI COMMITTATI)
-# Questo esclude la cartella di attivazione 'esercizi' che usi come venv
+# Ambienti Virtuali (CRUCIALE: esclude il tuo ambiente 'esercizi' e i nomi standard)
 /esercizi
 .venv/
 venv/
 env/
 
+# Credenziali di Sicurezza (CRUCIALE: protegge l'accesso al database)
+.env
+
 # Bytecode e file di sistema generati da Python
 __pycache__/
 *.pyc
 
-# File generati dall'OS (macOS)
+# File generati da macOS
 .DS_Store
 
-# Report e Log (File che cambiano spesso)
+# Report e Log
 /report_iva.csv
 *.log
