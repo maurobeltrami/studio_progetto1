@@ -70,6 +70,61 @@ def inserisci_nuovo_prodotto():
     except Exception as e:
         # Cattura gli errori di validazione della classe Prodotto o errori DB (es. codice duplicato)
         print(f"\n❌ Operazione fallita. Dettaglio: {e}")
+
+
+def aggiorna_prodotto_interattivo():
+    """Gestisce l'input interattivo per aggiornare un prodotto esistente."""
+    print("\n--- AGGIORNAMENTO PRODOTTO (UPDATE) ---")
+    
+    codice = input("Inserisci il Codice del prodotto da aggiornare: ").strip()
+    
+    # 1. Recupera il prodotto dal DB
+    prodotto = db_manager.leggi_prodotto_per_codice(codice)
+    
+    if not prodotto:
+        print(f"❌ Errore: Prodotto con codice '{codice}' non trovato.")
+        return
+
+    # Visualizza i dati attuali
+    print("\n--- Dati Attuali ---")
+    print(f"Nome: {prodotto.nome}")
+    print(f"Prezzo Netto: €{prodotto.prezzo_netto:.2f}")
+    print(f"Aliquota IVA: {prodotto.aliquota_iva:.0f}%")
+    print("-" * 20)
+    
+    # 2. Acquisisci i nuovi valori
+    try:
+        # Acquisizione del NUOVO nome (o lascia vuoto per non modificare)
+        nuovo_nome = input(f"Nuovo Nome (Attuale: {prodotto.nome}) - [Invio per lasciare invariato]: ").strip()
+        
+        # Acquisizione del NUOVO prezzo netto
+        nuovo_netto_str = input(f"Nuovo Prezzo Netto (Attuale: €{prodotto.prezzo_netto:.2f}) - [Invio per lasciare invariato]: ").strip()
+        
+        # 3. Applica le modifiche all'oggetto in memoria
+        
+        # Aggiorna il nome solo se l'utente ha inserito un valore
+        if nuovo_nome:
+            prodotto.nome = nuovo_nome
+            
+        # Aggiorna il prezzo netto solo se l'utente ha inserito un valore
+        if nuovo_netto_str:
+            nuovo_netto = float(nuovo_netto_str)
+            # La chiamata a aggiorna_prezzo_netto usa il setter, che include la validazione e ricalcola il Lordo
+            prodotto.aggiorna_prezzo_netto(nuovo_netto)
+
+        # 4. Salva le modifiche nel database
+        db_manager.aggiorna_prodotto(prodotto)
+        
+        # Lettura di verifica
+        prodotto_aggiornato = db_manager.leggi_prodotto_per_codice(codice)
+        if prodotto_aggiornato:
+            print(f"\n✅ Aggiornamento verificato: Netto finale: €{prodotto_aggiornato.prezzo_netto:.2f}, Lordo finale: €{prodotto_aggiornato.prezzo_lordo:.2f}")
+
+    except ValueError:
+        print("\n❌ Errore di Input: Devi inserire un numero valido per il prezzo.")
+        
+    except Exception as e:
+        print(f"\n❌ Operazione fallita: {e}")
 # --- Gestione del Menu (Loop Principale) ---
 
 def avvia_cli():
@@ -96,8 +151,8 @@ def avvia_cli():
             
             
         elif scelta == '3':
-            print("Funzione Aggiornamento (UPDATE) non ancora implementata.")
-            # TODO: Chiama la funzione aggiorna_prodotto_interattivo()
+            # CHIAMA LA FUNZIONE DI AGGIORNAMENTO
+            aggiorna_prodotto_interattivo()
             
         elif scelta == '4':
             print("Funzione Eliminazione (DELETE) non ancora implementata.")

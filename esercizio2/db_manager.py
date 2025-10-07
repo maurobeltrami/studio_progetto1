@@ -147,6 +147,49 @@ class ProdottoDBManager:
             print(f"❌ Errore generico durante la ricostruzione dei prodotti: {e}")
             return []
 
+    # ... (all'interno della classe ProdottoDBManager, dopo leggi_prodotti)
+
+    def leggi_prodotto_per_codice(self, codice):
+        """
+        Recupera un singolo prodotto dal database, identificandolo tramite il codice.
+        
+        Returns:
+            Prodotto or None: L'istanza di Prodotto se trovata, altrimenti None.
+        """
+        if not self.conn:
+            return None
+            
+        # Query SQL per selezionare tutti i campi di un singolo prodotto
+        query = "SELECT codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo FROM prodotti WHERE codice = %s AND attivo = TRUE;"
+        
+        try:
+            self.cursor.execute(query, (codice,))
+            riga = self.cursor.fetchone()
+            
+            if riga:
+                # Ricostruzione dell'oggetto Prodotto (come in leggi_prodotti)
+                codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo = riga
+                
+                prodotto_ricostruito = Prodotto(
+                    codice=codice,
+                    nome=nome,
+                    prezzo_netto=float(prezzo_netto), 
+                    aliquota_iva=float(aliquota_iva),
+                )
+                
+                # Sovrascrive il Lordo con il valore del DB per coerenza (se necessario)
+                # Prodotto ha già una logica corretta, quindi non è strettamente necessario, ma è una sicurezza
+                # prodotto_ricostruito.prezzo_lordo = float(prezzo_lordo) 
+                
+                return prodotto_ricostruito
+            else:
+                return None # Prodotto non trovato
+                
+        except psycopg2.Error as e:
+            print(f"❌ Errore DB durante la ricerca: {e}")
+            return None
+
+        
 
     def aggiorna_prodotto(self, prodotto):
         """
@@ -302,7 +345,8 @@ if __name__ == '__main__':
         print("\n--- FASE 4: Verifica Finale dopo DELETE ---")
         prodotti_finali = manager.leggi_prodotti()
         print(f"✅ Prodotti rimasti nel DB: {len(prodotti_finali)}")
-        
+
+    
         # Stampa i prodotti rimasti per conferma (dovrebbe esserci solo LPT-001)
         for p in prodotti_finali:
             print(f"   - RIMASTO: {p.codice}: {p.nome} (Netto: €{p.prezzo_netto:.2f})")
