@@ -127,6 +127,38 @@ def aggiorna_prodotto_interattivo():
         print(f"\n❌ Operazione fallita: {e}")
 # --- Gestione del Menu (Loop Principale) ---
 
+# ... (dopo la funzione aggiorna_prodotto_interattivo) ...
+
+def elimina_prodotto_interattivo():
+    """Gestisce l'input interattivo per eliminare un prodotto."""
+    print("\n--- ELIMINAZIONE PRODOTTO (DELETE) ---")
+    
+    codice = input("Inserisci il Codice del prodotto da eliminare: ").strip()
+    
+    # 1. Recupera il prodotto per conferma visiva
+    prodotto = db_manager.leggi_prodotto_per_codice(codice)
+    
+    if not prodotto:
+        print(f"❌ Errore: Prodotto con codice '{codice}' non trovato.")
+        return
+
+    # 2. Richiesta di conferma
+    print("\n--- ATTENZIONE: Conferma Eliminazione ---")
+    print(f"Stai per eliminare: {prodotto.nome} (Codice: {prodotto.codice})")
+    
+    conferma = input("Sei sicuro di voler procedere? (S/N): ").strip().upper()
+    
+    if conferma == 'S':
+        try:
+            # 3. Chiama il metodo del DB Manager per l'eliminazione
+            db_manager.elimina_prodotto(codice)
+            print(f"\n✅ Prodotto '{codice}' eliminato con successo.")
+            
+        except Exception as e:
+            print(f"\n❌ Operazione fallita. Dettaglio: {e}")
+    else:
+        print("\nOperazione annullata dall'utente.")
+
 def avvia_cli():
     """Funzione principale che esegue il loop del menu."""
     if not db_manager.connetti():
@@ -155,8 +187,8 @@ def avvia_cli():
             aggiorna_prodotto_interattivo()
             
         elif scelta == '4':
-            print("Funzione Eliminazione (DELETE) non ancora implementata.")
-            # TODO: Chiama la funzione elimina_prodotto_interattivo()
+            # CHIAMA LA FUNZIONE DI ELIMINAZIONE
+            elimina_prodotto_interattivo()
             
         elif scelta == '5':
             print("Ricerca avanzata (Filtri) non ancora implementata.")
