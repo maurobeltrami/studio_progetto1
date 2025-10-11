@@ -193,7 +193,7 @@ def avvia_cli():
 
     while True:
         mostra_menu()
-        scelta = input("Seleziona un'opzione (0-6): ").strip()
+        scelta = input("Seleziona un'opzione (0-7): ").strip()
 
         if scelta == '1':
             inserisci_prodotto_interattivo()
