@@ -1,47 +1,54 @@
-🎯 Esercizio 2: Modello di Dominio e Persistenza Dati (CRUD)
+# 🚀 Esercizio 2: Mini-ERP con Persistenza PostgreSQL e Relazioni
 
-Questo modulo si concentra sull'integrazione di un modello di business (la classe Prodotto) con un sistema di persistenza esterno (PostgreSQL), completando tutte le operazioni necessarie per la gestione del ciclo di vita di un dato.
+Questo progetto è parte del modulo **"MESE 1: FONDAMENTI ACCELERATI (Python per ERP e SQL)"** del Piano di Studio per Programmatore Freelance Odoo.
 
-🛠️ Contenuti e Competenze
+## 🎯 Obiettivo Raggiunto
 
-1. Modello di Dominio (classe.py)
+L'obiettivo di questo esercizio era sviluppare una solida base tecnica per la gestione dei dati, simulando le funzionalità CRUD fondamentali di un sistema ERP, in preparazione all'uso dell'ORM di Odoo.
 
-Il file classe.py definisce la logica di business fondamentale del progetto:
+**Stato Attuale: Completato (CRUD + Many2one)**
 
-    Classe Prodotto: Implementazione completa con incapsulamento (Getter e Setter).
+## ⚙️ Funzionalità Implementate (CRUD)
 
-    Precisione Finanziaria: Uso del modulo decimal per garantire la precisione nei calcoli di prezzo.
+Il modulo `db_manager.py` implementa tutte le operazioni essenziali su una singola entità (`Prodotto`), gestendo la comunicazione sicura con un database PostgreSQL.
 
-    Logica del Lordo: Calcolo automatico e corretto del prezzo Lordo in base all'aliquota IVA.
+1.  **Create (Inserimento):** Inserimento di nuove istanze di `Prodotto` nel database.
+2.  **Read (Lettura):**
+    * Lettura di tutti i prodotti attivi.
+    * Ricerca per codice esatto.
+    * Ricerca avanzata con filtri multipli (nome, prezzo massimo).
+3.  **Update (Aggiornamento):** Modifica dei dati di un prodotto esistente.
+4.  **Delete (Eliminazione Logica):** L'eliminazione è simulata (soft-delete), mantenendo il record ma marcandolo come non attivo.
 
-    Validazione: Uso dei setter e Exception Handling per prevenire l'inserimento di dati non validi (es. prezzi negativi).
+## 🔗 Relazione Essenziale Implementata: Many2one (Prodotto -> Fornitore)
 
-2. Strato di Persistenza (db_manager.py)
+In linea con l'architettura dei sistemi ERP come Odoo, è stata implementata la prima relazione tra modelli:
 
-La classe ProdottoDBManager gestisce la comunicazione sicura e transazionale con il database PostgreSQL.
+* **Entità:** `Prodotto` (Many) e `Fornitore` (One).
+* **Logica:** Ogni Prodotto può avere un solo Fornitore principale.
+* **Tecnologia:** La relazione è gestita nel database tramite una **Chiave Esterna** (`id_fornitore`) e nel codice Python tramite una `LEFT JOIN` e l'istanziamento di due oggetti correlati (`Prodotto` contiene un riferimento a `Fornitore`).
 
-    Sicurezza: Le credenziali del database sono gestite tramite il file .env e caricate con python-dotenv, evitando l'hardcoding.
+## 💻 Istruzioni per l'Avvio
 
-    Connessione Sicura: I metodi connetti() e disconnetti() garantiscono una gestione sicura delle risorse.
+1.  **Configurazione Database:**
+    * Assicurarsi che il server PostgreSQL sia attivo.
+    * Avere un database chiamato `studio_progetto_erp` (o quello configurato nel file `.env`).
+    * Eseguire i comandi SQL per creare le tabelle `prodotti` e `fornitori` e impostare la chiave esterna (se non è stato già fatto):
+        ```sql
+        CREATE TABLE fornitori (id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL UNIQUE);
+        -- Esegui gli aggiornamenti per la tabella prodotti se stai usando un database esistente.
+        ```
 
-    Operazioni CRUD Complete:
+2.  **Esecuzione:**
+    * Assicurarsi di essere all'interno dell'ambiente virtuale.
+    * Eseguire il modulo principale dalla cartella `esercizi/esercizio2/`:
+        ```bash
+        python -m esercizio2.main
+        ```
 
-        Create (inserisci_prodotto): Utilizza COMMIT e ROLLBACK per transazioni atomiche.
+3.  **Interazione:**
+    * Utilizzare il menu CLI per interagire (inserimento, visualizzazione, ricerca) e testare la persistenza e la corretta visualizzazione della relazione Fornitore (opzioni 1, 2 e 7).
 
-        Read (leggi_prodotti): Esegue SELECT e ricostruisce gli oggetti Prodotto Python.
+## ⏭️ Prossimi Passi
 
-        Update (aggiorna_prodotto): Modifica i dati del prodotto nel DB in base al codice.
-
-        Delete (elimina_prodotto): Rimuove il record e gestisce il rowcount per la verifica.
-
-⚙️ Istruzioni per l'Esecuzione
-
-Per eseguire i test CRUD presenti nel blocco if __name__ == '__main__': di db_manager.py:
-
-    Assicurati che l'ambiente virtuale sia attivo e che PostgreSQL sia in esecuzione.
-
-    Esegui il modulo dal terminale:
-    Bash
-
-    python -m esercizio2.db_manager
-
+Il prossimo obiettivo del piano di studi è sfruttare questa logica di business in un contesto web, creando una **API RESTful** con **Flask** per mappare le operazioni CRUD ai metodi HTTP (GET, POST, PUT, DELETE).

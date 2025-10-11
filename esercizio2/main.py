@@ -1,170 +1,154 @@
 import sys
-# Importiamo il manager del database
+import os
+from .classe import Prodotto, Fornitore
 from .db_manager import ProdottoDBManager
 
-# Il manager sarà l'oggetto principale che gestisce la connessione al DB
+# Inizializzazione del Database Manager
 db_manager = ProdottoDBManager()
 
-# --- Funzioni di Stampa ---
-
 def mostra_menu():
-    """Stampa le opzioni disponibili per l'utente."""
-    print("\n" + "="*40)
-    print("        MENU PRINCIPALE (GESTIONE PRODOTTI)")
-    print("="*40)
-    print("1. Visualizza tutti i prodotti")
-    print("2. Inserisci nuovo prodotto (CREATE)")
-    print("3. Aggiorna un prodotto (UPDATE)")
-    print("4. Elimina un prodotto (DELETE)")
-    print("5. Esegui Ricerca Avanzata (Filtri)")
+    print("\n==================================")
+    print("      GESTIONALE PRODOTTI (ERP)")
+    print("==================================")
+    print("1. Inserisci Nuovo Prodotto")
+    print("2. Visualizza Tutti i Prodotti")
+    print("3. Cerca Prodotto per Codice")
+    print("4. Aggiorna Prezzo Prodotto")
+    print("5. Ricerca Avanzata (Filtri)")
+    print("6. Elimina Prodotto (Soft Delete)")
+    print("7. Mostra Fornitori ")
     print("0. Esci e Chiudi Connessione")
-    print("="*40)
+    print("==================================")
 
-def mostra_prodotti(lista_prodotti):
-    """Visualizza la lista dei prodotti in un formato leggibile."""
-    if not lista_prodotti:
-        print("\n⚠️ Nessun prodotto trovato nel database.")
+def mostra_prodotti(prodotti):
+    if not prodotti:
+        print("--- Nessun prodotto trovato. ---")
         return
-
-    print("\n--- ELENCO PRODOTTI ATTIVI ---")
-    print(f"{'Codice':<12} {'Nome':<30} {'Netto':>10} {'Lord/o':>10} {'IVA%':>5}")
-    print("-" * 65)
     
-    for p in lista_prodotti:
-        print(f"{p.codice:<12} {p.nome:<30} {p.prezzo_netto:10.2f} {p.prezzo_lordo:10.2f} {p.aliquota_iva:5.0f}")
-    print("-" * 65)
-# --- Funzioni di Gestione Prodotto ---
-from .classe import Prodotto 
+    print("\n==============================")
+    print("  ELENCO PRODOTTI ATTIVI")
+    print("==============================")
+    for p in prodotti:
+        forn_info = f" ({p.fornitore.nome})" if p.fornitore else ""
+        print(f"[{p.codice}] {p.nome}{forn_info} | Netto: €{p.prezzo_netto:.2f} | Lordo: €{p.prezzo_lordo:.2f}")
+    print("==============================")
 
-def inserisci_nuovo_prodotto():
-    """Gestisce l'input interattivo per creare e inserire un nuovo prodotto."""
-    print("\n--- INSERIMENTO NUOVO PRODOTTO (CREATE) ---")
+
+def leggi_fornitori_interattiva():
+    """Permette all'utente di selezionare un fornitore esistente."""
+    fornitori = db_manager.leggi_tutti_i_fornitori()
     
-    # Acquisizione dati dall'utente
+    if not fornitori:
+        print("⚠️ Attenzione: Nessun fornitore trovato nel DB. Il prodotto sarà senza fornitore.")
+        return None
+
+    print("\n--- SELEZIONE FORNITORE ---")
+    print("0. Nessun Fornitore")
+    
+    for i, f in enumerate(fornitori):
+        print(f"{f.id_fornitore}. {f.nome}")
+        
+    while True:
+        scelta = input("Seleziona ID Fornitore (0 per ignorare): ").strip()
+        if not scelta:
+            print("⚠️ Selezione omessa. Prodotto senza fornitore.")
+            return None
+            
+        try:
+            id_scelto = int(scelta)
+            if id_scelto == 0:
+                return None
+            
+            forn_selezionato = next((f for f in fornitori if f.id_fornitore == id_scelto), None)
+            
+            if forn_selezionato:
+                print(f"✅ Fornitore selezionato: {forn_selezionato.nome}")
+                return forn_selezionato
+            else:
+                print("❌ ID non valido. Riprova.")
+        except ValueError:
+            print("❌ Input non valido. Inserisci un numero intero.")
+
+
+def inserisci_prodotto_interattivo():
+    print("\n--- INSERIMENTO NUOVO PRODOTTO ---")
+    
     codice = input("Codice Prodotto: ").strip()
     nome = input("Nome Prodotto: ").strip()
     
+    # Selezione Fornitore (Many2one)
+    fornitore_selezionato = leggi_fornitori_interattiva()
+    
     try:
-        prezzo_netto = float(input("Prezzo Netto: "))
-        aliquota_iva = float(input("Aliquota IVA (%): "))
+        prezzo_netto = float(input("Prezzo Netto (€): "))
+        aliquota_iva_input = input("Aliquota IVA (% - Invio per 22.0): ")
+        aliquota_iva = float(aliquota_iva_input) if aliquota_iva_input else 22.0
         
-        # 1. Crea l'oggetto Prodotto in memoria (attiva la validazione e il calcolo Lordo)
         nuovo_prodotto = Prodotto(
-            codice=codice, 
-            nome=nome, 
-            prezzo_netto=prezzo_netto, 
-            aliquota_iva=aliquota_iva
+            codice=codice,
+            nome=nome,
+            prezzo_netto=prezzo_netto,
+            aliquota_iva=aliquota_iva,
+            fornitore=fornitore_selezionato
         )
         
-        # Mostra i dati calcolati prima di salvare
-        print(f"\nProdotto pronto per il salvataggio:")
-        print(f"  Netto: €{nuovo_prodotto.prezzo_netto:.2f}, Lordo: €{nuovo_prodotto.prezzo_lordo:.2f}")
-
-        # 2. Chiama il metodo del DB Manager per l'inserimento
         db_manager.inserisci_prodotto(nuovo_prodotto)
         
     except ValueError as e:
-        # Cattura gli errori di conversione (se l'utente non inserisce un numero)
-        print(f"\n❌ Errore di Input: Devi inserire un numero valido per prezzo o IVA. Dettaglio: {e}")
-        
+        print(f"\n❌ Errore di Input o Validazione: {e}")
     except Exception as e:
-        # Cattura gli errori di validazione della classe Prodotto o errori DB (es. codice duplicato)
-        print(f"\n❌ Operazione fallita. Dettaglio: {e}")
+        print(f"\n❌ Errore generico: {e}")
 
+def visualizza_tutti_interattivo():
+    prodotti = db_manager.leggi_prodotti()
+    mostra_prodotti(prodotti)
+
+def cerca_per_codice_interattivo():
+    print("\n--- RICERCA PER CODICE ---")
+    codice = input("Inserisci il Codice Prodotto da cercare: ").strip()
+    
+    prodotto = db_manager.leggi_prodotto_per_codice(codice)
+    
+    if prodotto:
+        print("\n✅ Prodotto Trovato:")
+        print(prodotto)
+    else:
+        print(f"❌ Prodotto con codice '{codice}' non trovato o non attivo.")
 
 def aggiorna_prodotto_interattivo():
-    """Gestisce l'input interattivo per aggiornare un prodotto esistente."""
-    print("\n--- AGGIORNAMENTO PRODOTTO (UPDATE) ---")
+    print("\n--- AGGIORNAMENTO PREZZO ---")
+    codice = input("Codice Prodotto da aggiornare: ").strip()
     
-    codice = input("Inserisci il Codice del prodotto da aggiornare: ").strip()
-    
-    # 1. Recupera il prodotto dal DB
     prodotto = db_manager.leggi_prodotto_per_codice(codice)
     
-    if not prodotto:
-        print(f"❌ Errore: Prodotto con codice '{codice}' non trovato.")
-        return
-
-    # Visualizza i dati attuali
-    print("\n--- Dati Attuali ---")
-    print(f"Nome: {prodotto.nome}")
-    print(f"Prezzo Netto: €{prodotto.prezzo_netto:.2f}")
-    print(f"Aliquota IVA: {prodotto.aliquota_iva:.0f}%")
-    print("-" * 20)
-    
-    # 2. Acquisisci i nuovi valori
-    try:
-        # Acquisizione del NUOVO nome (o lascia vuoto per non modificare)
-        nuovo_nome = input(f"Nuovo Nome (Attuale: {prodotto.nome}) - [Invio per lasciare invariato]: ").strip()
-        
-        # Acquisizione del NUOVO prezzo netto
-        nuovo_netto_str = input(f"Nuovo Prezzo Netto (Attuale: €{prodotto.prezzo_netto:.2f}) - [Invio per lasciare invariato]: ").strip()
-        
-        # 3. Applica le modifiche all'oggetto in memoria
-        
-        # Aggiorna il nome solo se l'utente ha inserito un valore
-        if nuovo_nome:
-            prodotto.nome = nuovo_nome
+    if prodotto:
+        print(f"Attuale prezzo Netto per '{prodotto.nome}': €{prodotto.prezzo_netto:.2f}")
+        try:
+            nuovo_netto = float(input("Nuovo Prezzo Netto (€): "))
             
-        # Aggiorna il prezzo netto solo se l'utente ha inserito un valore
-        if nuovo_netto_str:
-            nuovo_netto = float(nuovo_netto_str)
-            # La chiamata a aggiorna_prezzo_netto usa il setter, che include la validazione e ricalcola il Lordo
             prodotto.aggiorna_prezzo_netto(nuovo_netto)
-
-        # 4. Salva le modifiche nel database
-        db_manager.aggiorna_prodotto(prodotto)
-        
-        # Lettura di verifica
-        prodotto_aggiornato = db_manager.leggi_prodotto_per_codice(codice)
-        if prodotto_aggiornato:
-            print(f"\n✅ Aggiornamento verificato: Netto finale: €{prodotto_aggiornato.prezzo_netto:.2f}, Lordo finale: €{prodotto_aggiornato.prezzo_lordo:.2f}")
-
-    except ValueError:
-        print("\n❌ Errore di Input: Devi inserire un numero valido per il prezzo.")
-        
-    except Exception as e:
-        print(f"\n❌ Operazione fallita: {e}")
-
+            db_manager.aggiorna_prodotto(prodotto)
+            
+        except ValueError:
+            print("❌ Input non valido. Il prezzo deve essere un numero.")
+        except Exception as e:
+            print(f"❌ Errore durante l'aggiornamento: {e}")
+    else:
+        print(f"❌ Prodotto con codice '{codice}' non trovato.")
 
 def elimina_prodotto_interattivo():
-    """Gestisce l'input interattivo per eliminare un prodotto."""
-    print("\n--- ELIMINAZIONE PRODOTTO (DELETE) ---")
+    print("\n--- ELIMINAZIONE PRODOTTO ---")
+    codice = input("Codice Prodotto da ELIMINARE: ").strip()
     
-    codice = input("Inserisci il Codice del prodotto da eliminare: ").strip()
-    
-    # 1. Recupera il prodotto per conferma visiva
-    prodotto = db_manager.leggi_prodotto_per_codice(codice)
-    
-    if not prodotto:
-        print(f"❌ Errore: Prodotto con codice '{codice}' non trovato.")
-        return
-
-    # 2. Richiesta di conferma
-    print("\n--- ATTENZIONE: Conferma Eliminazione ---")
-    print(f"Stai per eliminare: {prodotto.nome} (Codice: {prodotto.codice})")
-    
-    conferma = input("Sei sicuro di voler procedere? (S/N): ").strip().upper()
-    
-    if conferma == 'S':
-        try:
-            # 3. Chiama il metodo del DB Manager per l'eliminazione
-            db_manager.elimina_prodotto(codice)
-            print(f"\n✅ Prodotto '{codice}' eliminato con successo.")
-            
-        except Exception as e:
-            print(f"\n❌ Operazione fallita. Dettaglio: {e}")
+    if db_manager.elimina_prodotto(codice):
+        print(f"✅ Prodotto {codice} eliminato con successo.")
     else:
-        print("\nOperazione annullata dall'utente.")
+        print(f"❌ Impossibile eliminare il prodotto {codice}.")
 
 def ricerca_avanzata_interattiva():
-    """Gestisce l'input interattivo per la ricerca filtrata."""
     print("\n--- RICERCA AVANZATA (FILTRI) ---")
     
-    # Parametro 1: Nome (opzionale)
     nome_filtro = input("Filtra per Nome (parola chiave, Invio per ignorare): ").strip()
-    
-    # Parametro 2: Prezzo Massimo (opzionale)
     prezzo_max_input = input("Prezzo Netto Massimo (€, Invio per ignorare): ").strip()
     
     prezzo_max_filtro = None
@@ -175,61 +159,67 @@ def ricerca_avanzata_interattiva():
             if prezzo_max_filtro < 0:
                  raise ValueError("Il prezzo massimo non può essere negativo.")
         
-        # Chiama il metodo del DB Manager con i parametri raccolti
         risultati = db_manager.ricerca_prodotti_filtrata(
             nome=nome_filtro if nome_filtro else None,
             prezzo_max=prezzo_max_filtro
         )
         
-        # Mostra i risultati usando la funzione esistente
         mostra_prodotti(risultati)
 
     except ValueError as e:
         print(f"\n❌ Errore di Input: {e}")
     except Exception as e:
         print(f"\n❌ Errore durante l'esecuzione della ricerca: {e}")
+
+def visualizza_fornitori_interattivo():
+    """Recupera e mostra tutti i fornitori presenti nel database."""
+    print("\n--- ELENCO FORNITORI ATTIVI ---")
+    
+    fornitori = db_manager.leggi_tutti_i_fornitori()
+    
+    if not fornitori:
+        print("--- Nessun fornitore trovato. ---")
+        return
+        
+    for f in fornitori:
+        print(f"[ID: {f.id_fornitore}] Nome: {f.nome}")
+    print("-------------------------------")
+
 def avvia_cli():
-    """Funzione principale che esegue il loop del menu."""
+    print("--- Avvio CLI del Gestionale Prodotto ---")
     if not db_manager.connetti():
-        print("Impossibile avviare l'applicazione senza connessione al database.")
+        print("Impossibile connettersi al database. Uscita.")
         sys.exit(1)
 
     while True:
         mostra_menu()
-        scelta = input("Seleziona un'opzione (0-5): ").strip()
+        scelta = input("Seleziona un'opzione (0-6): ").strip()
 
         if scelta == '1':
-            # READ (Visualizza)
-            prodotti = db_manager.leggi_prodotti()
-            mostra_prodotti(prodotti)
-            
-        # ... all'interno di def avvia_cli():
-
+            inserisci_prodotto_interattivo()
         elif scelta == '2':
-            # PRIMA: print("Funzione Inserimento (CREATE) non ancora implementata.")
-            # DOPO: Chiama la funzione implementata
-            inserisci_nuovo_prodotto() 
-            
-            
+            visualizza_tutti_interattivo()
         elif scelta == '3':
-            # CHIAMA LA FUNZIONE DI AGGIORNAMENTO
-            aggiorna_prodotto_interattivo()
-            
+            cerca_per_codice_interattivo()
         elif scelta == '4':
-            # CHIAMA LA FUNZIONE DI ELIMINAZIONE
-            elimina_prodotto_interattivo()
-            
+            aggiorna_prodotto_interattivo()
         elif scelta == '5':
-            # CHIAMA LA FUNZIONE DI RICERCA AVANZATA
             ricerca_avanzata_interattiva()
-            
+        elif scelta == '6':
+            elimina_prodotto_interattivo()
+        elif scelta == '7':
+            visualizza_fornitori_interattivo()
         elif scelta == '0':
-            print("\nChiusura dell'applicazione...")
-            db_manager.disconnetti()
+            print("Uscita in corso...")
             break
-            
         else:
-            print("\n❌ Opzione non valida. Riprova.")
+            print("❌ Opzione non valida. Riprova.")
+
+    db_manager.disconnetti()
+    print("Programma terminato.")
 
 if __name__ == '__main__':
+    # Assicurati che l'ambiente sia impostato per l'esecuzione del modulo
+    # Aggiungi la directory superiore al PYTHONPATH per l'importazione
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     avvia_cli()
