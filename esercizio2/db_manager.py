@@ -310,49 +310,69 @@ class ProdottoDBManager:
             print(f"❌ Errore generico: {e}")
             return False
 
-# ... (dopo la definizione della classe ProdottoDBManager)
+# ... (all'interno della classe ProdottoDBManager) ...
 
-# -----------------------------------------------
-# --- TEST DI CONNESSIONE, UPDATE E DELETE ---
-# -----------------------------------------------
-if __name__ == '__main__':
-    
-    manager = ProdottoDBManager()
-    print("\n--- Tentativo di connessione avviato ---")
-    
-    if manager.connetti():
+    def ricerca_prodotti_filtrata(self, nome=None, prezzo_max=None):
+        """
+        Recupera prodotti filtrando per nome (LIKE) e/o prezzo netto massimo.
         
-        CODICE_LAPTOP = "LPT-001"
-        CODICE_TASTIERA = "ACS-012"
-        
-        # --- FASE 1: Lettura Iniziale ---
-        print("\n--- FASE 1: Lettura Iniziale ---")
-        prodotti_iniziali = manager.leggi_prodotti() 
-        print(f"Prodotti trovati prima del DELETE: {len(prodotti_iniziali)}")
-        
-        # --- FASE 2: Aggiornamento (per ripasso) ---
-        print("\n--- FASE 2: Esecuzione UPDATE ---")
-        laptop_da_modificare = next((p for p in prodotti_iniziali if p.codice == CODICE_LAPTOP), None)
-        if laptop_da_modificare:
-            laptop_da_modificare.aggiorna_prezzo_netto(725.50)
-            manager.aggiorna_prodotto(laptop_da_modificare)
-
-        # --- FASE 3: Eliminazione (DELETE) ---
-        print(f"\n--- FASE 3: Esecuzione DELETE per {CODICE_TASTIERA} ---")
-        manager.elimina_prodotto(CODICE_TASTIERA)
-        
-        # --- FASE 4: Lettura Finale per Verifica ---
-        print("\n--- FASE 4: Verifica Finale dopo DELETE ---")
-        prodotti_finali = manager.leggi_prodotti()
-        print(f"✅ Prodotti rimasti nel DB: {len(prodotti_finali)}")
-
-    
-        # Stampa i prodotti rimasti per conferma (dovrebbe esserci solo LPT-001)
-        for p in prodotti_finali:
-            print(f"   - RIMASTO: {p.codice}: {p.nome} (Netto: €{p.prezzo_netto:.2f})")
+        Args:
+            nome (str, optional): Filtra i prodotti il cui nome contiene questa stringa.
+            prezzo_max (float, optional): Filtra i prodotti con prezzo netto inferiore o uguale a questo valore.
             
-        # Test di eliminazione di un prodotto inesistente (dovrebbe fallire con un avviso)
-        print("\n--- TEST: Eliminazione di codice inesistente ---")
-        manager.elimina_prodotto("PROD-INESISTENTE")
+        Returns:
+            list[Prodotto]: Una lista di istanze di oggetti Prodotto che soddisfano i criteri.
+        """
+        if not self.conn:
+            print("❌ Connessione non attiva. Impossibile eseguire la ricerca.")
+            return []
+
+        # 1. Base della Query
+        query = "SELECT codice, nome, prezzo_netto, aliquota_iva, prezzo_lordo, attivo FROM prodotti WHERE attivo = TRUE"
+        condizioni = []
+        valori = []
+
+        # 2. Aggiunta Condizione per il Nome
+        if nome:
+            # Usiamo ILIKE per una ricerca case-insensitive e % per LIKE
+            condizioni.append("nome ILIKE %s")
+            valori.append(f"%{nome}%")
+
+        # 3. Aggiunta Condizione per il Prezzo Massimo
+        if prezzo_max is not None and prezzo_max >= 0:
+            condizioni.append("prezzo_netto <= %s")
+            valori.append(prezzo_max)
+
+        # 4. Assemblaggio della Query
+        if condizioni:
+            query += " AND " + " AND ".join(condizioni)
+        
+        query += " ORDER BY nome ASC;"
+        
+        prodotti_letti = []
+        
+        try:
+            # Esecuzione della Query con i valori dinamici
+            self.cursor.execute(query, valori)
+            risultati = self.cursor.fetchall()
             
-    manager.disconnetti()
+            # Ricostruzione degli Oggetti (come in leggi_prodotti)
+            for riga in risultati:
+                codice, nome_db, prezzo_netto, aliquota_iva, prezzo_lordo, attivo = riga
+                prodotto_ricostruito = Prodotto(
+                    codice=codice,
+                    nome=nome_db,
+                    prezzo_netto=float(prezzo_netto),
+                    aliquota_iva=float(aliquota_iva),
+                )
+                prodotti_letti.append(prodotto_ricostruito)
+
+            print(f"✅ Ricerca completata. Trovati {len(prodotti_letti)} prodotti corrispondenti.")
+            return prodotti_letti
+
+        except psycopg2.Error as e:
+            print(f"❌ Errore DB durante la ricerca filtrata: {e}")
+            return []
+        except Exception as e:
+            print(f"❌ Errore generico: {e}")
+            return []

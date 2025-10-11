@@ -125,9 +125,7 @@ def aggiorna_prodotto_interattivo():
         
     except Exception as e:
         print(f"\n❌ Operazione fallita: {e}")
-# --- Gestione del Menu (Loop Principale) ---
 
-# ... (dopo la funzione aggiorna_prodotto_interattivo) ...
 
 def elimina_prodotto_interattivo():
     """Gestisce l'input interattivo per eliminare un prodotto."""
@@ -159,6 +157,37 @@ def elimina_prodotto_interattivo():
     else:
         print("\nOperazione annullata dall'utente.")
 
+def ricerca_avanzata_interattiva():
+    """Gestisce l'input interattivo per la ricerca filtrata."""
+    print("\n--- RICERCA AVANZATA (FILTRI) ---")
+    
+    # Parametro 1: Nome (opzionale)
+    nome_filtro = input("Filtra per Nome (parola chiave, Invio per ignorare): ").strip()
+    
+    # Parametro 2: Prezzo Massimo (opzionale)
+    prezzo_max_input = input("Prezzo Netto Massimo (€, Invio per ignorare): ").strip()
+    
+    prezzo_max_filtro = None
+    
+    try:
+        if prezzo_max_input:
+            prezzo_max_filtro = float(prezzo_max_input)
+            if prezzo_max_filtro < 0:
+                 raise ValueError("Il prezzo massimo non può essere negativo.")
+        
+        # Chiama il metodo del DB Manager con i parametri raccolti
+        risultati = db_manager.ricerca_prodotti_filtrata(
+            nome=nome_filtro if nome_filtro else None,
+            prezzo_max=prezzo_max_filtro
+        )
+        
+        # Mostra i risultati usando la funzione esistente
+        mostra_prodotti(risultati)
+
+    except ValueError as e:
+        print(f"\n❌ Errore di Input: {e}")
+    except Exception as e:
+        print(f"\n❌ Errore durante l'esecuzione della ricerca: {e}")
 def avvia_cli():
     """Funzione principale che esegue il loop del menu."""
     if not db_manager.connetti():
@@ -191,8 +220,8 @@ def avvia_cli():
             elimina_prodotto_interattivo()
             
         elif scelta == '5':
-            print("Ricerca avanzata (Filtri) non ancora implementata.")
-            # TODO: Chiama la funzione ricerca_avanzata()
+            # CHIAMA LA FUNZIONE DI RICERCA AVANZATA
+            ricerca_avanzata_interattiva()
             
         elif scelta == '0':
             print("\nChiusura dell'applicazione...")
