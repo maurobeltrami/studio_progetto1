@@ -1,7 +1,7 @@
 import psycopg2
 import os
 from dotenv import load_dotenv
-from .classe import Prodotto, Fornitore
+from classe import Prodotto, Fornitore
 
 load_dotenv() 
 
